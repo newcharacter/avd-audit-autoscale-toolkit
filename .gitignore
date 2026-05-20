@@ -1,0 +1,15 @@
+# Generated audit outputs can contain subscription IDs, hostnames, app names,
+# group names, user principal names, and internal network details.
+outputs/
+Avd*.csv
+Avd*.json
+Avd*.xlsx
+Avd*.xlsb
+Avd*.txt
+ScalingPlanRecommendations.ps1
+GroupMembers_*.csv
+groups.txt
+
+# Local PowerShell and editor noise
+Microsoft/Windows/PowerShell/AzPredictor/
+.DS_Store
