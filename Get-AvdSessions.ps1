@@ -15,6 +15,9 @@
 .PARAMETER ShowUsers
     Optional. Include user principal names in output (may be sensitive).
 
+.PARAMETER InstallMissingModules
+    Optional. Install missing Az modules into the current user scope.
+
 .EXAMPLE
     ./Get-AvdSessions.ps1 -SubscriptionId "xxx"
 
@@ -34,7 +37,10 @@ param(
     [switch]$ShowUsers,
 
     [Parameter(Mandatory = $false)]
-    [string]$OutputPath = "outputs"
+    [string]$OutputPath = "outputs",
+
+    [Parameter(Mandatory = $false)]
+    [switch]$InstallMissingModules
 )
 
 $ErrorActionPreference = "Continue"
@@ -46,6 +52,10 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 
 # Ensure AVD module
 if (-not (Get-Module -ListAvailable -Name Az.DesktopVirtualization)) {
+    if (-not $InstallMissingModules) {
+        Write-Host "Missing module: Az.DesktopVirtualization. Install it first or rerun with -InstallMissingModules." -ForegroundColor Red
+        exit 1
+    }
     Write-Host "Installing Az.DesktopVirtualization module..." -ForegroundColor Yellow
     Install-Module Az.DesktopVirtualization -Scope CurrentUser -Force -AllowClobber
 }

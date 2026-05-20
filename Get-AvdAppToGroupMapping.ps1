@@ -21,6 +21,9 @@
 .PARAMETER ExportForNewGroups
     Optional. Outputs a simplified format suitable for creating new AD groups.
 
+.PARAMETER InstallMissingModules
+    Optional. Install missing Az modules into the current user scope.
+
 .EXAMPLE
     ./Get-AvdAppToGroupMapping.ps1
 
@@ -37,7 +40,10 @@ param(
     [switch]$ExportForNewGroups,
 
     [Parameter(Mandatory = $false)]
-    [string]$OutputPath = "outputs"
+    [string]$OutputPath = "outputs",
+
+    [Parameter(Mandatory = $false)]
+    [switch]$InstallMissingModules
 )
 
 $ErrorActionPreference = "Continue"
@@ -50,6 +56,10 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 $requiredModules = @("Az.Accounts", "Az.DesktopVirtualization", "Az.Resources")
 foreach ($mod in $requiredModules) {
     if (-not (Get-Module -ListAvailable -Name $mod)) {
+        if (-not $InstallMissingModules) {
+            Write-Host "Missing module: $mod. Install it first or rerun with -InstallMissingModules." -ForegroundColor Red
+            exit 1
+        }
         Install-Module $mod -Scope CurrentUser -Force -AllowClobber
     }
     Import-Module $mod -ErrorAction SilentlyContinue

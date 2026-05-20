@@ -12,6 +12,9 @@
 .PARAMETER SubscriptionId
     Optional. Target a specific subscription.
 
+.PARAMETER InstallMissingModules
+    Optional. Install missing Az modules into the current user scope.
+
 .EXAMPLE
     ./Get-AvdAutoscaleReadiness.ps1 -SubscriptionId "xxx"
 #>
@@ -22,7 +25,10 @@ param(
     [string]$SubscriptionId,
 
     [Parameter(Mandatory = $false)]
-    [string]$OutputPath = "outputs"
+    [string]$OutputPath = "outputs",
+
+    [Parameter(Mandatory = $false)]
+    [switch]$InstallMissingModules
 )
 
 $ErrorActionPreference = "Continue"
@@ -33,6 +39,10 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 
 # Ensure modules
 if (-not (Get-Module -ListAvailable -Name Az.DesktopVirtualization)) {
+    if (-not $InstallMissingModules) {
+        Write-Host "Missing module: Az.DesktopVirtualization. Install it first or rerun with -InstallMissingModules." -ForegroundColor Red
+        exit 1
+    }
     Write-Host "Installing Az.DesktopVirtualization module..." -ForegroundColor Yellow
     Install-Module Az.DesktopVirtualization -Scope CurrentUser -Force -AllowClobber
 }

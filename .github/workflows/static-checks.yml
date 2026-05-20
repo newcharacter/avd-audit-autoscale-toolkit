@@ -1,0 +1,36 @@
+name: Static checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  powershell:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Get-ChildItem -Path . -Filter "*.ps1" -Recurse | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | Format-List | Out-String | Write-Error
+            }
+          }
+
+      - name: Guard against committed audit exports
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(git ls-files 'Avd*.csv' 'Avd*.json' 'Avd*.xlsx' 'Avd*.xlsb' 'ScalingPlanRecommendations.ps1' 'GroupMembers_*.csv' 'groups.txt')"
+          if [ -n "$forbidden" ]; then
+            echo "Generated audit outputs must not be committed:"
+            echo "$forbidden"
+            exit 1
+          fi

@@ -1,16 +1,26 @@
 # AVD Audit & Autoscale Toolkit
 
-PowerShell scripts for auditing Azure Virtual Desktop (AVD) estates, reviewing session-host usage, mapping application-group assignments, and producing autoscale-readiness recommendations.
+Small PowerShell toolkit for Azure Virtual Desktop (AVD) discovery, session-load review, application assignment mapping, and autoscale readiness checks.
 
-This repository contains generic tooling only. Do not commit generated exports from real environments.
+It is intentionally read-heavy. The scripts collect evidence and produce local reports; they do not change host-pool settings unless you copy and run the generated recommendation commands yourself.
+
+## What It Does
+
+- inventories host pools, workspaces, app groups, session hosts, VMs, scaling plans, and diagnostics
+- captures current session pressure by pool and host
+- scores pooled host pools for autoscale readiness
+- maps RemoteApps and desktop app groups to assigned Entra ID groups
+- writes timestamped CSV/JSON reports to `outputs/`
 
 ## Quick Start
 
-Run from Azure Cloud Shell PowerShell, or from a local PowerShell session with the required Az modules and an authenticated Azure context.
+Run from Azure Cloud Shell PowerShell, or from a local PowerShell session with the Az modules installed and an authenticated Azure context.
 
 ```powershell
 git clone https://github.com/newcharacter/avd-audit-autoscale-toolkit.git
 cd avd-audit-autoscale-toolkit
+
+Connect-AzAccount
 
 # Optional: target one subscription
 $subscriptionId = "<subscription-id>"
@@ -20,42 +30,49 @@ $subscriptionId = "<subscription-id>"
 ./Get-AvdAutoscaleReadiness.ps1 -SubscriptionId $subscriptionId
 ```
 
-By default, generated reports are written to `outputs/`, which is ignored by git.
+If a required Az module is missing, install it yourself or rerun the script with `-InstallMissingModules`.
+
+```powershell
+./Get-AvdInventory.ps1 -SubscriptionId $subscriptionId -InstallMissingModules
+```
 
 ## Scripts
 
-| Script | Purpose |
-| --- | --- |
-| `Get-AvdInventory.ps1` | Inventory host pools, app groups, workspaces, VMs, scaling plans, and diagnostics state. |
-| `Get-AvdSessions.ps1` | Capture current session-host load and pool-level utilization. |
-| `Get-AvdAutoscaleReadiness.ps1` | Score pooled host pools for autoscale readiness and generate suggested scaling-plan commands. |
-| `Get-AvdDeepDive.ps1` | Export a broader AVD estate snapshot across host pools, VMs, networks, apps, assignments, scaling plans, and storage signals. |
-| `Get-AvdAppGroupAssignments.ps1` | Export application-group role assignments for access review. |
-| `Get-AvdAppToGroupMapping.ps1` | Map published RemoteApps and desktop app groups to assigned Entra ID groups. |
-| `Bootstrap-AvdToolkit.ps1` | Recreate a compact copy of the core toolkit scripts in a target folder. |
+| Script | Purpose | Typical output |
+| --- | --- | --- |
+| `Get-AvdInventory.ps1` | Inventory host pools, app groups, workspaces, VMs, scaling plans, and diagnostics state. | `AvdInventory-*.csv`, `AvdInventory-*.json` |
+| `Get-AvdSessions.ps1` | Capture current session-host load and pool-level utilization. | `AvdSessions-*.csv`, `AvdPoolSummary-*.csv` |
+| `Get-AvdAutoscaleReadiness.ps1` | Score pooled host pools for autoscale readiness and generate suggested scaling-plan commands. | `AvdAutoscaleAssessment-*.csv`, `ScalingPlanRecommendations.ps1` |
+| `Get-AvdDeepDive.ps1` | Export a broader estate snapshot across host pools, VMs, networks, apps, assignments, scaling plans, and storage signals. | `AvdDeepDive-*.json`, multiple CSVs |
+| `Get-AvdAppGroupAssignments.ps1` | Export application-group role assignments for access review. | `AvdAppGroupAssignments-*.csv` |
+| `Get-AvdAppToGroupMapping.ps1` | Map published RemoteApps and desktop app groups to assigned Entra ID groups. | `AvdAppToGroupMapping-*.csv` |
 
 All scripts accept `-SubscriptionId` where appropriate. If omitted, scripts scan enabled subscriptions visible to the current Azure account.
 
-## Safety Notes
+## Safe Handling
 
-AVD audit outputs can contain sensitive information, including subscription IDs, resource names, host names, application names, group names, user principal names, and internal network details.
+Generated reports can contain sensitive information: subscription IDs, resource names, host names, application names, group names, user principal names, and internal network details.
 
-Keep generated files private unless you have reviewed and anonymised them. The following are intentionally ignored by git:
+The repo ignores generated report files by default, including:
 
 - `outputs/`
-- generated `Avd*.csv` and `Avd*.json` files
-- generated `ScalingPlanRecommendations.ps1`
-- spreadsheet exports such as `.xlsx` and `.xlsb`
+- `Avd*.csv`
+- `Avd*.json`
+- `Avd*.xlsx`
+- `Avd*.xlsb`
+- `ScalingPlanRecommendations.ps1`
+- group list exports
 
-`Get-AvdSessions.ps1 -ShowUsers`, deep-dive assignment exports, and app/group mapping exports may include personal data. Use them for internal reviews only unless anonymised.
+Keep generated outputs private unless they have been reviewed and anonymised. `Get-AvdSessions.ps1 -ShowUsers`, deep-dive assignment exports, and app/group mapping exports may include personal data.
 
-## Common Workflow
+## Suggested Workflow
 
 1. Run `Get-AvdInventory.ps1` to understand the estate.
 2. Run `Get-AvdSessions.ps1` during representative business hours.
 3. Run `Get-AvdAutoscaleReadiness.ps1` to identify low-risk autoscale changes.
-4. Review generated scaling commands before running them.
+4. Review the generated scaling commands before running anything.
 5. Enable diagnostics where historical usage data is required for capacity planning.
+6. Use the assignment mapping scripts for access reviews, then store those outputs securely.
 
 ## Autoscale Quick Reference
 
@@ -114,27 +131,9 @@ New-AzWvdScalingPlan `
     })
 ```
 
-Enable host-pool diagnostics:
+## Before Sharing Outputs
 
-```powershell
-$workspace = Get-AzOperationalInsightsWorkspace `
-    -ResourceGroupName "<log-analytics-resource-group>" `
-    -Name "<workspace-name>"
-
-$hostPool = Get-AzWvdHostPool `
-    -ResourceGroupName "<resource-group>" `
-    -Name "<host-pool>"
-
-Set-AzDiagnosticSetting `
-    -ResourceId $hostPool.Id `
-    -WorkspaceId $workspace.ResourceId `
-    -Enabled $true `
-    -Category @("Checkpoint", "Error", "Management", "Connection", "HostRegistration", "AgentHealthStatus")
-```
-
-## Reviewing Generated Outputs
-
-Before sharing reports externally, remove or anonymise:
+Remove or anonymise:
 
 - Azure subscription and tenant identifiers
 - resource group, workspace, host-pool, VM, VNet, subnet, and storage names
@@ -142,3 +141,7 @@ Before sharing reports externally, remove or anonymise:
 - Entra ID group names
 - user principal names and display names
 - internal URLs and IP addresses
+
+## License
+
+MIT. See `LICENSE`.

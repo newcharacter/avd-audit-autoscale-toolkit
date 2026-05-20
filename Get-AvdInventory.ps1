@@ -12,6 +12,9 @@
 .PARAMETER OutputPath
     Optional. Directory for output files. Defaults to outputs/.
 
+.PARAMETER InstallMissingModules
+    Optional. Install missing Az modules into the current user scope.
+
 .EXAMPLE
     # In Cloud Shell:
     ./Get-AvdInventory.ps1 -SubscriptionId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -21,7 +24,7 @@
 
 .NOTES
     Author: AVD Audit Toolkit
-    Requires: Az.DesktopVirtualization module (auto-installs if missing)
+    Requires: Az.DesktopVirtualization module
 #>
 
 [CmdletBinding()]
@@ -30,7 +33,10 @@ param(
     [string]$SubscriptionId,
 
     [Parameter(Mandatory = $false)]
-    [string]$OutputPath = "outputs"
+    [string]$OutputPath = "outputs",
+
+    [Parameter(Mandatory = $false)]
+    [switch]$InstallMissingModules
 )
 
 $ErrorActionPreference = "Continue"
@@ -41,6 +47,10 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 
 # Ensure AVD module is available
 if (-not (Get-Module -ListAvailable -Name Az.DesktopVirtualization)) {
+    if (-not $InstallMissingModules) {
+        Write-Host "Missing module: Az.DesktopVirtualization. Install it first or rerun with -InstallMissingModules." -ForegroundColor Red
+        exit 1
+    }
     Write-Host "Installing Az.DesktopVirtualization module..." -ForegroundColor Yellow
     Install-Module Az.DesktopVirtualization -Scope CurrentUser -Force -AllowClobber
 }

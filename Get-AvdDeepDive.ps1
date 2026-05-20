@@ -18,12 +18,16 @@
 
 .EXAMPLE
     ./Get-AvdDeepDive.ps1 | Tee-Object -FilePath "AvdDeepDive.txt"
+
+.PARAMETER InstallMissingModules
+    Optional. Install missing Az modules into the current user scope.
 #>
 
 [CmdletBinding()]
 param(
     [string]$SubscriptionId,
-    [string]$OutputPath = "outputs"
+    [string]$OutputPath = "outputs",
+    [switch]$InstallMissingModules
 )
 
 $ErrorActionPreference = "Continue"
@@ -51,6 +55,10 @@ Write-Host "====================================================================
 # Ensure modules
 @("Az.DesktopVirtualization", "Az.Compute", "Az.Network", "Az.Resources") | ForEach-Object {
     if (-not (Get-Module -ListAvailable -Name $_)) {
+        if (-not $InstallMissingModules) {
+            Write-Host "Missing module: $_. Install it first or rerun with -InstallMissingModules." -ForegroundColor Red
+            exit 1
+        }
         Write-Host "Installing $_..." -ForegroundColor Yellow
         Install-Module $_ -Scope CurrentUser -Force -AllowClobber
     }

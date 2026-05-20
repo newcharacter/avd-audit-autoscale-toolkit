@@ -18,6 +18,9 @@
 .PARAMETER GroupsOnly
     Optional. Only output group assignments (skip users/service principals).
 
+.PARAMETER InstallMissingModules
+    Optional. Install missing Az modules into the current user scope.
+
 .EXAMPLE
     ./Get-AvdAppGroupAssignments.ps1
 
@@ -34,7 +37,10 @@ param(
     [switch]$GroupsOnly,
 
     [Parameter(Mandatory = $false)]
-    [string]$OutputPath = "outputs"
+    [string]$OutputPath = "outputs",
+
+    [Parameter(Mandatory = $false)]
+    [switch]$InstallMissingModules
 )
 
 $ErrorActionPreference = "Continue"
@@ -47,6 +53,10 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 $requiredModules = @("Az.Accounts", "Az.DesktopVirtualization", "Az.Resources")
 foreach ($mod in $requiredModules) {
     if (-not (Get-Module -ListAvailable -Name $mod)) {
+        if (-not $InstallMissingModules) {
+            Write-Host "Missing module: $mod. Install it first or rerun with -InstallMissingModules." -ForegroundColor Red
+            exit 1
+        }
         Write-Host "Installing $mod..." -ForegroundColor Yellow
         Install-Module $mod -Scope CurrentUser -Force -AllowClobber
     }
